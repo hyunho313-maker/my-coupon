@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리뷰 쿠폰 발급기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f7f9fc; padding: 20px; display: flex; justify-content: center; }
+        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        h2 { text-align: center; color: #333; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .result-box { margin-top: 30px; padding: 20px; border: 2px dashed #4CAF50; border-radius: 8px; background-color: #fafdfa; display: none; text-align: center; }
+        #qrcode { display: flex; justify-content: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎁 리뷰 쿠폰 생성기</h2>
+    <div class="form-group">
+        <label>1. 플랫폼 선택</label>
+        <select id="platform">
+            <option value="네이버 블로그">네이버 블로그</option>
+            <option value="인스타그램">인스타그램</option>
+            <option value="유튜브">유튜브</option>
+            <option value="기타">기타</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>2. 리뷰 주소(URL)</label>
+        <input type="url" id="reviewUrl" placeholder="https://...">
+    </div>
+    <div class="form-group">
+        <label>3. 쿠폰 종류</label>
+        <input type="text" id="couponName" placeholder="예: 무료 아메리카노 1잔">
+    </div>
+    <button onclick="generateAndSaveCoupon()">쿠폰 번호 생성 및 DB 저장</button>
+
+    <div class="result-box" id="resultBox">
+        <h3>발급 완료 및 DB 저장 성공!</h3>
+        <p><strong>쿠폰명:</strong> <span id="resCouponName"></span></p>
+        <p><strong>코드:</strong> <span id="resCode" style="color:red; font-weight:bold;"></span></p>
+        <div id="qrcode"></div>
+        <p style="font-size:12px; color:#999;">위 QR 코드를 캡처해서 고객에게 보내주세요.</p>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function makeRandomCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 8; i++) { code += chars.charAt(Math.floor(Math.random() * chars.length)); }
+        return code;
+    }
+
+    async function generateAndSaveCoupon() {
+        const platform = document.getElementById('platform').value;
+        const reviewUrl = document.getElementById('reviewUrl').value;
+        const couponName = document.getElementById('couponName').value;
+
+        if(!reviewUrl || !couponName) { 
+            alert('빈칸이 있습니다! 리뷰 주소와 쿠폰 종류를 모두 입력해주세요.'); 
+            return; 
+        }
+        
+        const uniqueCode = makeRandomCode();
+        const checkPageUrl = `${window.location.origin}/check.html?code=${uniqueCode}`;
+
+        try {
+            const { error } = await supabase
+                .from('coupons')
+                .insert([{ platform, review_url: reviewUrl, coupon_name: couponName, code: uniqueCode, is_used: false }]);
+
+            if (error) throw error;
+
+            document.getElementById('resCouponName').innerText = couponName;
+            document.getElementById('resCode').innerText = uniqueCode;
+            document.getElementById('qrcode').innerHTML = "";
+
+            new QRCode(document.getElementById("qrcode"), { text: checkPageUrl, width: 150, height: 150 });
+            document.getElementById('resultBox').style.display = 'block';
+        } catch (e) { 
+            alert('연결 실패: ' + e.message + '\n수파베이스의 자물쇠(RLS)가 꺼져있는지 확인해주세요.'); 
+        }
+    }
+</script>
+</body>
+</html>

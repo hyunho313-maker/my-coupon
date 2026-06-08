@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직원용 쿠폰 확인</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f2f2f2; padding: 20px; display: flex; justify-content: center; }
+        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .status { font-size: 24px; font-weight: bold; margin: 20px 0; padding: 15px; border-radius: 8px; }
+        .valid { background-color: #e8f5e9; color: #2e7d32; }
+        .invalid { background-color: #ffebee; color: #c62828; }
+        .coupon-info { background: #f9f9f9; padding: 15px; border-radius: 6px; text-align: left; margin-bottom: 20px; }
+        button { width: 100%; padding: 15px; background-color: #007BFF; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📋 쿠폰 검증 시스템</h2>
+    <div id="loading">조회 중...</div>
+    <div id="content" style="display:none;">
+        <div id="statusBox" class="status"></div>
+        <div class="coupon-info">
+            <p><strong>쿠폰명:</strong> <span id="infoName"></span></p>
+            <p><strong>코드:</strong> <span id="infoCode"></span></p>
+            <p><strong>플랫폼:</strong> <span id="infoPlatform"></span></p>
+        </div>
+        <button id="useBtn" onclick="useCoupon()" style="display:none;">☕ 쿠폰 사용 완료 처리</button>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const urlParams = new URLSearchParams(window.location.search);
+    const couponCode = urlParams.get('code');
+    let targetId = null;
+
+    async function checkCoupon() {
+        if(!couponCode) { document.getElementById('loading').innerText = "코드가 없습니다."; return; }
+        try {
+            const { data, error } = await supabase.from('coupons').select('*').eq('code', couponCode);
+            if (error) throw error;
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            if(data.length === 0) {
+                document.getElementById('statusBox').innerText = "❌ 없는 쿠폰";
+                document.getElementById('statusBox').className = "status invalid";
+                return;
+            }
+
+            const coupon = data[0];
+            targetId = coupon.id;
+            document.getElementById('infoName').innerText = coupon.coupon_name;
+            document.getElementById('infoCode').innerText = coupon.code;
+            document.getElementById('infoPlatform').innerText = coupon.platform;
+
+            if(coupon.is_used) {
+                document.getElementById('statusBox').innerText = "⚠️ 이미 사용됨";
+                document.getElementById('statusBox').className = "status invalid";
+            } else {
+                document.getElementById('statusBox').innerText = "✅ 사용 가능";
+                document.getElementById('statusBox').className = "status valid";
+                document.getElementById('useBtn').style.display = 'block';
+            }
+        } catch (e) { alert('오류: ' + e.message); }
+    }
+
+    async function useCoupon() {
+        if(!confirm('사용 처리할까요?')) return;
+        try {
+            const { error } = await supabase.from('coupons').update({ is_used: true }).eq('id', targetId);
+            if (error) throw error;
+            alert('처리되었습니다!');
+            window.location.reload();
+        } catch (e) { alert('오류: ' + e.message); }
+    }
+    checkCoupon();
+</script>
+</body>
+</html>
