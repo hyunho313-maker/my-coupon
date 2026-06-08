@@ -51,11 +51,11 @@
 </div>
 
 <script>
-    // 중복 에러가 절대 날 수 없도록 완전히 새로 정돈한 핵심 연결부입니다.
-    const S_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
-    const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
+    // 변수 이름을 무조건 안 겹치게 완전히 새로 짰습니다!
+    const FINAL_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
+    const FINAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
     
-    const myClient = window.supabase.createClient(S_URL, S_KEY);
+    const mySupabase = window.supabase.createClient(FINAL_URL, FINAL_KEY);
 
     function makeRandomCode() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -78,7 +78,7 @@
         const checkPageUrl = `https://hyunho313-maker.github.io/my-coupon/check.html?code=${uniqueCode}`;
 
         try {
-            const { error } = await myClient
+            const { error } = await mySupabase
                 .from('coupons')
                 .insert([{ platform, review_url: reviewUrl, coupon_name: couponName, code: uniqueCode, is_used: false }]);
 
@@ -91,7 +91,7 @@
             new QRCode(document.getElementById("qrcode"), { text: checkPageUrl, width: 150, height: 150 });
             document.getElementById('resultBox').style.display = 'block';
         } catch (e) { 
-            alert('연결 실패: ' + e.message + '\n수파베이스 설정을 다시 확인해주세요.'); 
+            alert('연결 실패: ' + e.message); 
         }
     }
 </script>
