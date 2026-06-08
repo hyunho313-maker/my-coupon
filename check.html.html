@@ -3,84 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>직원용 쿠폰 확인</title>
+    <title>쿠폰 직원 확인 창</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f2f2f2; padding: 20px; display: flex; justify-content: center; }
+        body { font-family: sans-serif; background-color: #f7f9fc; padding: 20px; display: flex; justify-content: center; }
         .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .status { font-size: 24px; font-weight: bold; margin: 20px 0; padding: 15px; border-radius: 8px; }
-        .valid { background-color: #e8f5e9; color: #2e7d32; }
-        .invalid { background-color: #ffebee; color: #c62828; }
-        .coupon-info { background: #f9f9f9; padding: 15px; border-radius: 6px; text-align: left; margin-bottom: 20px; }
-        button { width: 100%; padding: 15px; background-color: #007BFF; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; }
+        h2 { color: #333; margin-bottom: 20px; }
+        .info-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; border: 1px solid #eee; }
+        .info-box p { margin: 8px 0; font-size: 15px; }
+        .status { font-weight: bold; font-size: 18px; margin: 15px 0; }
+        .status.ready { color: #4CAF50; }
+        .status.used { color: #f44336; }
+        button { width: 100%; padding: 12px; background-color: #008CBA; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📋 쿠폰 검증 시스템</h2>
-    <div id="loading">조회 중...</div>
-    <div id="content" style="display:none;">
-        <div id="statusBox" class="status"></div>
-        <div class="coupon-info">
-            <p><strong>쿠폰명:</strong> <span id="infoName"></span></p>
-            <p><strong>코드:</strong> <span id="infoCode"></span></p>
-            <p><strong>플랫폼:</strong> <span id="infoPlatform"></span></p>
+    <h2>🎫 쿠폰 검증 시스템</h2>
+    <div id="loading" style="font-size: 16px; color: #666;">⏳ 쿠폰 정보 조회 중...</div>
+    
+    <div id="couponContent" style="display:none;">
+        <div class="info-box">
+            <p><strong>📋 플랫폼:</strong> <span id="platform"></span></p>
+            <p><strong>🎁 쿠폰 종류:</strong> <span id="couponName"></span></p>
+            <p><strong>🔑 쿠폰 코드:</strong> <span id="code"></span></p>
+            <p><strong>🔗 리뷰 링크:</strong> <a id="reviewUrl" href="#" target="_blank" style="color:#008CBA; word-break: break-all;">[리뷰 보기]</a></p>
         </div>
-        <button id="useBtn" onclick="useCoupon()" style="display:none;">☕ 쿠폰 사용 완료 처리</button>
+        
+        <div id="statusBox" class="status"></div>
+        <button id="useBtn" onclick="useCoupon()" disabled>직원 확인 (사용 완료 처리)</button>
     </div>
 </div>
 
 <script>
-    const SUPABASE_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
+    // 변수 이름 꼬임 방지 및 대문자 Supabase 적용 완료!
+    const FINAL_URL = "https://xnabtyteuueedxntmsdy.supabase.co"; 
+    const FINAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWJ0eXRldXVlZWR4bnRtc2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MDQ3OTEsImV4cCI6MjA5NjQ4MDc5MX0.KLJGXNbCGZl6hX_xb1vTg2oV1X1fCq8d3w8LDT3ZUzc";
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const urlParams = new URLSearchParams(window.location.search);
-    const couponCode = urlParams.get('code');
+    const mySupabase = window.supabase.createClient(FINAL_URL, FINAL_KEY);
     let targetId = null;
 
+    // 주소창에서 쿠폰 코드(code) 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    const couponCode = urlParams.get('code');
+
     async function checkCoupon() {
-        if(!couponCode) { document.getElementById('loading').innerText = "코드가 없습니다."; return; }
+        if(!couponCode) {
+            document.getElementById('loading').innerText = "❌ 잘못된 접근입니다. (쿠폰 코드가 없음)";
+            return;
+        }
+
         try {
-            const { data, error } = await supabase.from('coupons').select('*').eq('code', couponCode);
-            if (error) throw error;
+            const { data, error } = await mySupabase
+                .from('coupons')
+                .select('*')
+                .eq('code', couponCode)
+                .single();
 
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
-
-            if(data.length === 0) {
-                document.getElementById('statusBox').innerText = "❌ 없는 쿠폰";
-                document.getElementById('statusBox').className = "status invalid";
+            if (error || !data) {
+                document.getElementById('loading').innerText = "❌ 존재하지 않는 쿠폰입니다.";
                 return;
             }
 
-            const coupon = data[0];
-            targetId = coupon.id;
-            document.getElementById('infoName').innerText = coupon.coupon_name;
-            document.getElementById('infoCode').innerText = coupon.code;
-            document.getElementById('infoPlatform').innerText = coupon.platform;
+            targetId = data.id;
+            document.getElementById('platform').innerText = data.platform;
+            document.getElementById('couponName').innerText = data.coupon_name;
+            document.getElementById('code').innerText = data.code;
+            document.getElementById('reviewUrl').href = data.review_url;
 
-            if(coupon.is_used) {
-                document.getElementById('statusBox').innerText = "⚠️ 이미 사용됨";
-                document.getElementById('statusBox').className = "status invalid";
+            const statusBox = document.getElementById('statusBox');
+            const useBtn = document.getElementById('useBtn');
+
+            if(data.is_used) {
+                statusBox.innerText = "🚨 이미 사용 완료된 쿠폰입니다!";
+                statusBox.className = "status used";
+                useBtn.disabled = true;
             } else {
-                document.getElementById('statusBox').innerText = "✅ 사용 가능";
-                document.getElementById('statusBox').className = "status valid";
-                document.getElementById('useBtn').style.display = 'block';
+                statusBox.innerText = "✅ 사용 가능한 쿠폰입니다.";
+                statusBox.className = "status ready";
+                useBtn.disabled = false;
             }
-        } catch (e) { alert('오류: ' + e.message); }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('couponContent').style.display = 'block';
+
+        } catch (e) {
+            document.getElementById('loading').innerText = "❌ 시스템 오류: " + e.message;
+        }
     }
 
     async function useCoupon() {
-        if(!confirm('사용 처리할까요?')) return;
+        if(!targetId) return;
+        if(!confirm("정말 사용 완료 처리하시겠습니까?\n한 번 처리하면 취소할 수 없습니다.")) return;
+
         try {
-            const { error } = await supabase.from('coupons').update({ is_used: true }).eq('id', targetId);
-            if (error) throw error;
-            alert('처리되었습니다!');
-            window.location.reload();
-        } catch (e) { alert('오류: ' + e.message); }
+            const { error } = await mySupabase
+                .from('coupons')
+                .update({ is_used: true })
+                .eq('id', targetId);
+
+            if(error) throw error;
+
+            alert("🎉 성공적으로 사용 완료 처리되었습니다!");
+            location.reload();
+        } catch(e) {
+            alert("처리 실패: " + e.message);
+        }
     }
+
+    // 화면 켜지면 자동 실행
     checkCoupon();
 </script>
 </body>
